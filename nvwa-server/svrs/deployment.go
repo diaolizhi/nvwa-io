@@ -24,7 +24,7 @@ import (
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/errs"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/logger"
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/util/json"
 	"strings"
 )
 
@@ -49,6 +49,7 @@ func (t *DeploymentSvr) CreateAndInitJob(entity *DeploymentEntity) (int64, error
 		return 0, err
 	}
 	deploymentParams["ctime"] = libs.GetNow()
+	deploymentParams["utime"] = deploymentParams["ctime"]
 
 	// 2.1 transaction to create deployment and jobs
 	tx, err := GetDb().Begin()
@@ -58,6 +59,7 @@ func (t *DeploymentSvr) CreateAndInitJob(entity *DeploymentEntity) (int64, error
 	}
 
 	// 2.1.1 insert deployment
+	// 创建部署单
 	res, err := tx.Insert(DefaultDeploymentDao.Table(), deploymentParams).Execute()
 	if err != nil {
 		tx.Rollback()

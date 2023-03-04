@@ -40,18 +40,20 @@ func (t *BuildWorker) DealOnce() {
 	list, err := DefaultBuildSvr.GetWaitToBuilds(HOURS_AGO)
 	if err != nil {
 		logger.Errorf("Failed to GetWaitToBuilds, err=%s", err.Error())
-		time.Sleep(time.Second * 30)
 		return
 	}
 
 	if len(list) == 0 {
-		time.Sleep(3)
 		return
 	}
 
 	// 2. Start deal every task
 	for _, v := range list {
-		go DefaultBuildSvr.DealBuild(&v)
+		err := DefaultBuildSvr.DealBuild(&v)
+		if err != nil {
+			logger.Errorf("Failed to DealBuild, err=%s", err.Error())
+			return
+		}
 	}
 }
 

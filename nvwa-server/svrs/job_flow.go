@@ -59,14 +59,15 @@ func NewConsumeTimer(jobFlow *JobFlow, step int) *ConsumeTimer {
 
 	return ct
 }
-func (t *ConsumeTimer) begin() *ConsumeTimer {
+func (t *ConsumeTimer) begin() (*ConsumeTimer, error) {
 	t.beginTime = time.Now().UnixNano() / 1e6
 	_, err := DefaultJobStepSvr.CreateByJob(t.jobFlow.Job, t.step)
 	if err != nil {
 		logger.Errorf("Failed to create step, err=%s", err.Error())
+		return nil, err
 	}
 
-	return t
+	return t, nil
 }
 
 func (t *ConsumeTimer) update(cmd, log string, status int) error {
@@ -139,7 +140,10 @@ func (t *JobFlow) Do() error {
 
 func (t *JobFlow) initRemoteWorkspace() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_INIT_WORKSPACE).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_INIT_WORKSPACE).begin()
+	if err != nil {
+		return err
+	}
 
 	// format command and execute
 	cmd := fmt.Sprintf("mkdir -p %s", t.App.FormatRemoteVersionPackageWorkspace(t.Deploy.Pkg))
@@ -158,12 +162,14 @@ func (t *JobFlow) initRemoteWorkspace() error {
 
 func (t *JobFlow) syncVersionPkg() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_SYNC_VERISON_PACKAGE).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_SYNC_VERISON_PACKAGE).begin()
+	if err != nil {
+		return err
+	}
 
 	// sync version package according to package storage type
 	var output []byte
 	var cmd string
-	var err error
 	switch DefaultSystemSvr.Get().PkgStorageType {
 	case PKG_STORAGE_TYPE_LOCAL:
 		srcPkg := t.App.FormatLocalVersionPackagePath(t.Deploy.Pkg)
@@ -190,7 +196,10 @@ func (t *JobFlow) syncVersionPkg() error {
 
 func (t *JobFlow) unpackRemoteVersionPkg() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_UNPACK_VERISON_PACKAGE).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_UNPACK_VERISON_PACKAGE).begin()
+	if err != nil {
+		return err
+	}
 
 	// unpack remote version package
 	versionPkgWorkspace := t.App.FormatRemoteVersionPackageWorkspace(t.Deploy.Pkg)
@@ -214,7 +223,10 @@ func (t *JobFlow) unpackRemoteVersionPkg() error {
 
 func (t *JobFlow) execCmdBeforeDeploy() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_CMD_BEFORE_DEPLOY).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_CMD_BEFORE_DEPLOY).begin()
+	if err != nil {
+		return err
+	}
 
 	// @TODO 替换环境变量
 
@@ -243,7 +255,10 @@ func (t *JobFlow) doRemoteDeploy() error {
 
 func (t *JobFlow) softLink() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_DO_DEPLOY).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_DO_DEPLOY).begin()
+	if err != nil {
+		return err
+	}
 
 	// soft link package version to deploy path
 	tmpDeployPath := fmt.Sprintf("%s.%s", strings.TrimRight(t.App.DeployPath, "/"), "tmp")
@@ -271,7 +286,10 @@ func (t *JobFlow) softLink() error {
 
 func (t *JobFlow) execCmdAfterDeploy() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_CMD_AFTER_DEPLOY).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_CMD_AFTER_DEPLOY).begin()
+	if err != nil {
+		return err
+	}
 
 	// @TODO 替换环境变量
 
@@ -290,7 +308,10 @@ func (t *JobFlow) execCmdAfterDeploy() error {
 
 func (t *JobFlow) execCmdHealthCheck() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_CMD_HEALTH_CHECK).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_CMD_HEALTH_CHECK).begin()
+	if err != nil {
+		return err
+	}
 
 	// @TODO 替换环境变量
 
@@ -309,7 +330,10 @@ func (t *JobFlow) execCmdHealthCheck() error {
 
 func (t *JobFlow) execCmdOnline() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_CMD_ONLINE).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_CMD_ONLINE).begin()
+	if err != nil {
+		return err
+	}
 
 	// @TODO 替换环境变量
 
@@ -329,7 +353,10 @@ func (t *JobFlow) execCmdOnline() error {
 // @TODO clean
 func (t *JobFlow) clean() error {
 	// init step stat log
-	ct := NewConsumeTimer(t, JOB_STEP_END_CLEAN).begin()
+	ct, err := NewConsumeTimer(t, JOB_STEP_END_CLEAN).begin()
+	if err != nil {
+		return err
+	}
 
 	//$this->cleanRemoteWork();
 	//$this->cleanLocalWork();

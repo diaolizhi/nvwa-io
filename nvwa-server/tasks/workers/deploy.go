@@ -23,9 +23,14 @@ var DefaultDeployWorker = new(DeployWorker)
 
 type DeployWorker struct{}
 
+func (t *DeployWorker) Test() {
+	t.DealOnce()
+}
+
 func (t *DeployWorker) Deal() {
 	for {
 		t.DealOnce()
+		time.Sleep(time.Second * 10)
 	}
 }
 
@@ -34,17 +39,15 @@ func (t *DeployWorker) DealOnce() {
 	list, err := DefaultJobSvr.GetWaitToJobs(HOURS_AGO)
 	if err != nil {
 		logger.Errorf("Failed to GetWaitToJobs, err=%s", err.Error())
-		time.Sleep(time.Second * 30)
 		return
 	}
 
 	if len(list) == 0 {
-		time.Sleep(3)
 		return
 	}
 
 	// 2. Start deal jobs
 	for _, v := range list {
-		go DefaultJobSvr.DealJob(&v)
+		DefaultJobSvr.DealJob(&v)
 	}
 }

@@ -1,5 +1,7 @@
 module github.com/nvwa-io/nvwa-io/nvwa-agent
 
+go 1.19
+
 replace (
 	golang.org/x/crypto => github.com/golang/crypto v0.0.0-20180802221240-56440b844dfe
 	golang.org/x/net => github.com/golang/net v0.0.0-20180811021610-c39426892332

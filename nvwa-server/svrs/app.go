@@ -26,6 +26,7 @@ import (
 	"github.com/nvwa-io/nvwa-io/nvwa-server/lang"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/logger"
+	"github.com/samber/lo"
 	"os"
 	"strings"
 )
@@ -50,6 +51,14 @@ func (t *AppSvr) CreateAndInitEnvCluster(entity *AppEntity) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	p["repo_type"] = REPO_TYPE_GIT
+	p["local_repo_workspace"] = strings.TrimRight(system.RepoRootPath, "/") + "/" + entity.Name
+	p["local_build_workspace"] = strings.TrimRight(system.BuildRootPath, "/") + "/" + entity.Name
+	p["local_pkg_workspace"] = strings.TrimRight(system.PkgRootPath, "/") + "/" + entity.Name
+	p["deploy_user"] = system.DeployUser
+	p["deploy_path"] = strings.TrimRight(system.DeployRootPath, "/") + "/" + entity.Name
+	p["remote_pkg_workspace"] = strings.TrimRight(system.RemotePkgRootPath, "/") + "/" + entity.Name
+	p["cmd_timeout"] = 600
 	p["enabled"] = ENABLED
 	p["ctime"] = libs.GetNow()
 	p["utime"] = p["ctime"]
@@ -104,6 +113,7 @@ func (t *AppSvr) CreateAndInitEnvCluster(entity *AppEntity) (int64, error) {
 			"is_auto_deploy":  false,
 			"is_need_audit":   false,
 			"ctime":           libs.GetNow(),
+			"cmd_env":         "",
 		}).Execute()
 		if err != nil {
 			logger.Errorf("Failed to init app env, err=%s", err.Error())
@@ -198,7 +208,7 @@ func (t *AppSvr) ListAllByProjectId(projectId int64) ([]AppEntity, error) {
 		return nil, err
 	}
 
-	return list, nil
+	return lo.Reverse(list), nil
 }
 
 func (t *AppSvr) GetAppIdsByProjectId(projectId int64) ([]int64, error) {
@@ -296,15 +306,15 @@ func (t *AppSvr) GetGitClientByApp(app *AppEntity) (*git.Client, error) {
 		// because ssh repository url uses user's ssh public key (the system user who boot nvwa-server)
 		return gitClient, nil
 	} else if strings.HasPrefix(app.RepoUrl, "http") {
-		switch system.GitCIAuthType {
+		switch system.GitCiAuthType {
 		case GIT_CI_AUTH_TYPE_BASIC:
-			gitClient.BasicAuth(system.GitCIUser, system.GitCIPassword)
+			gitClient.BasicAuth(system.GitCiUser, system.GitCiPassword)
 			return gitClient, nil
 		case GIT_CI_AUTH_TYPE_TOKEN:
-			gitClient.TokenAuth(system.GitCIToken)
+			gitClient.TokenAuth(system.GitCiToken)
 			return gitClient, nil
 		default:
-			return nil, errors.New(fmt.Sprintf("Failed to recognize git ci auth type, type=%d", system.GitCIAuthType))
+			return nil, errors.New(fmt.Sprintf("Failed to recognize git ci auth type, type=%d", system.GitCiAuthType))
 		}
 	} else {
 		return gitClient, errors.New("Can not recognize repo url type (ssh or http supported), repo url: " + app.RepoUrl)
@@ -368,6 +378,10 @@ func (t *AppSvr) CloneOrFetchRepository(app *AppEntity, checkout string, isBranc
 		return "", err
 	}
 
+	if checkout == "" {
+		return "", nil
+	}
+
 	// checkout to branch/tag
 	if len(isBranch) > 0 && !isBranch[0] {
 		err = gitClient.CheckoutTag(app.LocalRepoWorkspace, checkout)
@@ -409,14 +423,18 @@ func (t *AppSvr) CloneOrFetchRepository(app *AppEntity, checkout string, isBranc
 
 func (t *AppSvr) InitTemporaryWorkspaceForBuild(repoWorkspaces, tempBuildPath string) ([]byte, error) {
 	// init temporary workspace
-	output, err := libs.CmdExecShellDefault(fmt.Sprintf("mkdir -p %s", tempBuildPath))
+	cmd := fmt.Sprintf("mkdir -p %s", tempBuildPath)
+	logger.Debugf("Exec cmd: %s", cmd)
+	output, err := libs.CmdExecShellDefault(cmd)
 	if err != nil {
 		logger.Errorf("Failed to mkdir -p %s, err=%s", tempBuildPath, err.Error())
 		return output, err
 	}
 
 	// cp repo workspace to temporary build workspace
-	output, err = libs.CmdExecShellDefault(fmt.Sprintf("cp -rf %s/. %s", repoWorkspaces, tempBuildPath))
+	cmd = fmt.Sprintf("cp -rf %s/. %s", repoWorkspaces, tempBuildPath)
+	logger.Debugf("Exec cmd: %s", cmd)
+	output, err = libs.CmdExecShellDefault(cmd)
 	if err != nil {
 		logger.Errorf("Failed to InitTemporaryWorkspaceForBuild, err=%s", err.Error())
 		return output, err
@@ -426,12 +444,15 @@ func (t *AppSvr) InitTemporaryWorkspaceForBuild(repoWorkspaces, tempBuildPath st
 }
 
 func (t *AppSvr) RunBuild(buildWorkspace string, cmdBuild string, timeout int) ([]byte, error) {
-	output, err := libs.CmdExecShellDefault(fmt.Sprintf("cd %s", buildWorkspace))
+	cmd := fmt.Sprintf("cd %s", buildWorkspace)
+	logger.Debugf("Exec cmd: %s", cmd)
+	output, err := libs.CmdExecShellDefault(cmd)
 	if err != nil {
 		logger.Errorf("Failed to cd %s, err=%s", buildWorkspace, err.Error())
 		return output, err
 	}
 
+	logger.Debugf("Exec cmd: %s", cmdBuild)
 	output, err = libs.CmdExecShell(cmdBuild, timeout)
 	if err != nil {
 		logger.Errorf("Failed to build, err=%s", err.Error())
@@ -445,6 +466,7 @@ func (t *AppSvr) RunBuild(buildWorkspace string, cmdBuild string, timeout int) (
 func (t *AppSvr) PackVersionPackage(buildId int64, branch, commit string, app *AppEntity) ([]byte, string, string, error) {
 	// mkdir app's package root path
 	cmdMkdir := fmt.Sprintf("mkdir -p %s", app.LocalPkgWorkspace)
+	logger.Debugf("Exec cmd: %s", cmdMkdir)
 	output, err := libs.CmdExecShellDefault(cmdMkdir)
 	if err != nil {
 		logger.Errorf("Failed to %s, err=%s", cmdMkdir, err.Error())
@@ -464,6 +486,7 @@ func (t *AppSvr) PackVersionPackage(buildId int64, branch, commit string, app *A
 		logger.Errorf("Failed to pack version package, cmd: %s err=%s", cmd, err.Error())
 		return output, cmd, packageName, err
 	}
+	logger.Debugf("Exec cmd success: %s", cmd)
 
 	return output, cmd, packageName, nil
 }
@@ -474,8 +497,7 @@ func (t *AppSvr) GetBranchesByAppId(appId int64) ([]string, error) {
 		return nil, err
 	}
 
-	// clone or fetch repository
-	_, err = t.CloneOrFetchRepository(app, "master")
+	_, err = t.CloneOrFetchRepository(app, "")
 	if err != nil {
 		logger.Errorf("Failed to CloneOrFetchRepository, err=%s", err.Error())
 		return nil, err

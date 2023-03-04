@@ -30,6 +30,8 @@ func (t *JobStepSvr) CreateByJob(job *JobEntity, step int) (int64, error) {
 		"deployment_id": job.DeploymentId,
 		"step":          step,
 		"status":        JOB_STEP_STATUS_DEALING,
+		"cmd":           "",
+		"log":           "",
 	})
 	if err != nil {
 		return 0, err

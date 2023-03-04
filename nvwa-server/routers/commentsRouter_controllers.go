@@ -215,6 +215,14 @@ func init() {
 			MethodParams: param.Make(),
 			Params: nil})
 
+	beego.GlobalControllerRouter["github.com/nvwa-io/nvwa-io/nvwa-server/controllers:ClusterController"] = append(beego.GlobalControllerRouter["github.com/nvwa-io/nvwa-io/nvwa-server/controllers:ClusterController"],
+		beego.ControllerComments{
+			Method: "Detect",
+			Router: `/detect/:cluster_id`,
+			AllowHTTPMethods: []string{"get"},
+			MethodParams: param.Make(),
+			Params: nil})
+
 	beego.GlobalControllerRouter["github.com/nvwa-io/nvwa-io/nvwa-server/controllers:DeploymentController"] = append(beego.GlobalControllerRouter["github.com/nvwa-io/nvwa-io/nvwa-server/controllers:DeploymentController"],
 		beego.ControllerComments{
 			Method: "Create",

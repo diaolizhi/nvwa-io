@@ -22,6 +22,7 @@ import (
 	"github.com/nvwa-io/nvwa-io/nvwa-server/entities/vo"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/lang"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/errs"
+	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/logger"
 	. "github.com/nvwa-io/nvwa-io/nvwa-server/svrs"
 )
 
@@ -412,6 +413,7 @@ func (t *AppController) Branches() {
 		return
 	}
 
+	logger.Debugf("===>获取分支")
 	branches, err := DefaultAppSvr.GetBranchesByAppId(appId)
 	if err != nil {
 		t.FailJson(errs.ERR_OPERATE, err.Error())

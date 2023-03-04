@@ -23,7 +23,7 @@ Notify = "http://localhost:9107/api/v1/notify/commit"
 
 # Aliyun cloud oss config
 [Oss]
-Endpoint = "oss-cn-hangzhou.aliyuncs.com"
-AccessKey = "LTAIEQPY1EoTe4I6"
-AccessSecret = "z7mwMmwzElfEkSarru1bb4Ywb1rWa7"
-Bucket = "yungeio"
+Endpoint = ""
+AccessKey = ""
+AccessSecret = ""
+Bucket = ""

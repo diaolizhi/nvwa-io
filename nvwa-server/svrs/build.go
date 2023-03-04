@@ -24,7 +24,6 @@ import (
 	. "github.com/nvwa-io/nvwa-io/nvwa-server/entities"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/logger"
-	"strings"
 	"time"
 )
 
@@ -35,9 +34,12 @@ type BuildSvr struct {
 
 func (t *BuildSvr) Create(uid, appId int64, branch string) (int64, error) {
 	id, err := DefaultBuildDao.CreateByMap(dbx.Params{
-		"uid":    uid,
-		"app_id": appId,
-		"branch": branch,
+		"uid":               uid,
+		"app_id":            appId,
+		"branch":            branch,
+		"log":               "",
+		"jenkins_build_num": 0,
+		"notified":          0,
 	})
 	if err != nil {
 		logger.Errorf("Failed to Create, appId=%d, branch=%s, err=%s", appId, branch, err.Error())
@@ -188,13 +190,22 @@ func (t *BuildSvr) dealLocalBuild(build *BuildEntity) error {
 	logs := make([]string, 0)
 	defer func() {
 		// update execute log
-		DefaultBuildDao.UpdateById(build.Id, dbx.Params{
-			"log": strings.Join(logs, "\n"),
+		logStr := ""
+		for _, str := range logs {
+			if str != "" {
+				logStr += str + "\n"
+			}
+		}
+		_, err := DefaultBuildDao.UpdateById(build.Id, dbx.Params{
+			"log": logStr,
 		})
+		if err != nil {
+			logger.Errorf("Failed to update build log, err=%s", err.Error())
+		}
 	}()
 
 	// 1.1 get app configs
-	logs = append(logs, fmt.Sprintf("[app] app id: %d", build.AppId))
+	logs = append(logs, fmt.Sprintf("[APP] id: %d\n", build.AppId))
 	app, err := DefaultAppSvr.GetById(build.AppId)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -220,7 +231,7 @@ func (t *BuildSvr) dealLocalBuild(build *BuildEntity) error {
 		logs = append(logs, err.Error())
 		return err
 	}
-	logs = append(logs, fmt.Sprintf("App %s repository updated ... ok", app.Name))
+	logs = append(logs, fmt.Sprintf("%s [代码拉取完成] \n", libs.GetNow()))
 
 	// init temporary workspace for build
 	output, err := DefaultAppSvr.InitTemporaryWorkspaceForBuild(app.LocalRepoWorkspace, app.FormatTemporaryBuildPath(build.Id))
@@ -229,6 +240,7 @@ func (t *BuildSvr) dealLocalBuild(build *BuildEntity) error {
 		logs = append(logs, err.Error(), string(output))
 		return err
 	}
+	logs = append(logs, fmt.Sprintf("%s [已初始化临时构建目录] \n", libs.GetNow()))
 	logs = append(logs, string(output))
 	defer func() { // clear temporary build workspace
 		// @TODO  clear
@@ -240,27 +252,38 @@ func (t *BuildSvr) dealLocalBuild(build *BuildEntity) error {
 	if err != nil {
 		logger.Errorf("Failed to exec build commands, err=%s", err.Error())
 		logs = append(logs, err.Error(), string(output))
-		DefaultBuildDao.UpdateById(build.Id, dbx.Params{
+		_, err = DefaultBuildDao.UpdateById(build.Id, dbx.Params{
 			"status": BUILD_STATUS_BUILD_FAILED,
 		})
+		if err != nil {
+			return err
+		}
 		return err
 	}
 	logs = append(logs, string(output))
-	DefaultBuildDao.UpdateById(build.Id, dbx.Params{
+	logs = append(logs, fmt.Sprintf("%s [构建命令执行完成] \n", libs.GetNow()))
+	_, err = DefaultBuildDao.UpdateById(build.Id, dbx.Params{
 		"status": BUILD_STATUS_BUILD_SUCC,
 	})
+	if err != nil {
+		return err
+	}
 
 	// 4.1 pack version package
 	output, cmd, packageName, err := DefaultAppSvr.PackVersionPackage(build.Id, checkout, commit, app)
-	logs = append(logs, "[pack version package]", cmd)
+	logs = append(logs, fmt.Sprintf("%s [打包命令]\n%s \n", libs.GetNow(), cmd))
 	if err != nil {
 		logger.Errorf("Failed to PackVersionPackage, cmd: %s, err=%s", cmd, err.Error())
 		logs = append(logs, err.Error())
-		DefaultBuildDao.UpdateById(build.Id, dbx.Params{
+		_, err = DefaultBuildDao.UpdateById(build.Id, dbx.Params{
 			"status": BUILD_STATUS_PACK_FAILED,
 		})
+		if err != nil {
+			return err
+		}
 		return err
 	}
+	logs = append(logs, fmt.Sprintf("%s [打包命令执行完成] \n", libs.GetNow()))
 
 	// update build result
 	_, err = DefaultBuildDao.UpdateById(build.Id, dbx.Params{

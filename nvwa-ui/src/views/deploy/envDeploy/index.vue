@@ -147,6 +147,7 @@
 <script>
 import apiApp from '@/api/app'
 import apiPkg from '@/api/pkg'
+import apiDeployment from '@/api/deployment'
 import { Message } from 'element-ui'
 
 export default {
@@ -233,8 +234,24 @@ export default {
       })
     },
     handleSubmitDeployment() {
-      this.dialogSelectPkgVisible = false
       console.log(this.deploymentConfig)
+      const cluster_ids = []
+      this.deploymentConfig.clusters.forEach((v) => {
+        cluster_ids.push(v.id)
+      })
+      apiDeployment.create({
+        project_id: this.deploymentConfig.app.project_id,
+        app_id: this.deploymentConfig.app.id,
+        env_id: this.deploymentConfig.env.id,
+        cluster_ids: cluster_ids.toString(),
+        pkg_id: this.deploymentConfig.selectedPkgId
+      }).then(response => {
+        this.dialogSelectPkgVisible = false
+        Message.success('部署单创建成功')
+        this.$router.push('/deployment/index')
+      }).catch(error => {
+        Message.error(error)
+      })
     }
   }
 }

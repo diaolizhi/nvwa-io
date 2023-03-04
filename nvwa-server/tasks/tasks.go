@@ -15,13 +15,17 @@ package tasks
 
 import (
 	"github.com/astaxie/beego/toolbox"
-	. "github.com/nvwa-io/nvwa-io/nvwa-server/tasks/workers"
+	"github.com/nvwa-io/nvwa-io/nvwa-server/tasks/workers"
 )
 
 func init() {
 
 	// notify consumer
-	DefaultNotifyWorker.DealNotifies()
+	builderWorker := workers.BuildWorker{}
+	go builderWorker.Deal()
+
+	deployWorker := workers.DeployWorker{}
+	go deployWorker.Deal()
 
 	//长连接监听开始执行和执行结束的任务列表
 	//consoles.DealRunningTaskList()

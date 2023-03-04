@@ -11,5 +11,15 @@ export default {
       url: url,
       method: 'get'
     })
+  },
+
+  create(deployment) {
+    return request({
+      url: '/v1/deployments',
+      method: 'post',
+      data: JSON.stringify({
+        deployment: deployment
+      })
+    })
   }
 }

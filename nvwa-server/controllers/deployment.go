@@ -20,6 +20,7 @@ import (
 	"github.com/nvwa-io/nvwa-io/nvwa-server/lang"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/errs"
+	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/logger"
 	. "github.com/nvwa-io/nvwa-io/nvwa-server/svrs"
 )
 
@@ -30,6 +31,7 @@ type DeploymentController struct {
 // @Title Create deployment
 // @router / [post]
 func (t *DeploymentController) Create() {
+	logger.Debugf("创建部署")
 	// json decode request
 	req := new(vo.ReqDeployment)
 	err := t.ReadRequestJson(&req)

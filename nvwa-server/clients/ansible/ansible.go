@@ -86,7 +86,7 @@ func (t *Client) CopyFile(user, src, dest string, hosts []string, timeout ...int
 	cmd := fmt.Sprintf("%s ansible all -m copy -u %s -a %s -f %d -i %s -T %d",
 		ANSIBLE_SSH_ARGS,
 		user,
-		libs.EscapeShellArg(fmt.Sprintf("src=%s dest=%s warn=False", src, dest)),
+		libs.EscapeShellArg(fmt.Sprintf("src=%s dest=%s", src, dest)),
 		ANSIBLE_CONCURRENCY,
 		inventoryFile,
 		ANSIBLE_CONNECTION_TIMEOUT,

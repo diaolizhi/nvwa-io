@@ -16,11 +16,14 @@ package controllers
 import (
 	"github.com/astaxie/beego/validation"
 	"github.com/go-ozzo/ozzo-dbx"
+	"github.com/nvwa-io/nvwa-io/nvwa-server/clients/ansible"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/daos"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/entities/vo"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/lang"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/errs"
+	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/logger"
 	. "github.com/nvwa-io/nvwa-io/nvwa-server/svrs"
+	"strings"
 )
 
 type ClusterController struct {
@@ -176,4 +179,34 @@ func (t *ClusterController) Delete() {
 	}
 
 	t.SuccJson()
+}
+
+// Detect 检测服务器是否可用
+func (t *ClusterController) Detect() {
+	id, err := t.GetInt64(":cluster_id")
+	if err != nil {
+		t.FailJson(errs.ERR_PARAM, ":cluster_id")
+		return
+	}
+
+	entity, err := DefaultClusterSvr.GetById(id)
+	if err != nil {
+		t.FailJson(errs.ERR_OPERATE, err.Error())
+		return
+	}
+
+	// TODO 检测
+	output, cmd, err := ansible.C().ExecShell("root",
+		"ls -al",
+		strings.Split(entity.Hosts, ","),
+		60)
+	if err != nil {
+		t.FailJson(errs.ERR_OPERATE, err.Error())
+		return
+	}
+
+	logger.Debugf(string(output))
+	logger.Debugf(cmd)
+
+	t.SuccJson(entity)
 }

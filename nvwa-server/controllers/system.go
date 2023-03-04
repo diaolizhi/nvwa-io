@@ -13,7 +13,10 @@
 
 package controllers
 
-import . "github.com/nvwa-io/nvwa-io/nvwa-server/svrs"
+import (
+	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/logger"
+	. "github.com/nvwa-io/nvwa-io/nvwa-server/svrs"
+)
 
 type SystemController struct {
 	BaseAuthController
@@ -24,6 +27,7 @@ type SystemController struct {
 func (t *SystemController) Get() {
 	sys := DefaultSystemSvr.Get()
 
+	logger.Debugf("查询系统配置", sys)
 	t.SuccJson(RespData{
 		"system": sys,
 	})
