@@ -32,6 +32,7 @@ type BuildWorker struct{}
 func (t *BuildWorker) Deal() {
 	for {
 		t.DealOnce()
+		time.Sleep(time.Second * 10)
 	}
 }
 
