@@ -15,6 +15,9 @@ package workers
 
 import (
 	"fmt"
+	dbx "github.com/go-ozzo/ozzo-dbx"
+	. "github.com/nvwa-io/nvwa-io/nvwa-server/daos"
+	. "github.com/nvwa-io/nvwa-io/nvwa-server/entities"
 	"github.com/nvwa-io/nvwa-io/nvwa-server/libs/logger"
 	. "github.com/nvwa-io/nvwa-io/nvwa-server/svrs"
 	"time"
@@ -53,6 +56,9 @@ func (t *BuildWorker) DealOnce() {
 		err := DefaultBuildSvr.DealBuild(&v)
 		if err != nil {
 			logger.Errorf("Failed to DealBuild, err=%s", err.Error())
+			_, err = DefaultBuildDao.UpdateById(v.Id, dbx.Params{
+				"status": BUILD_STATUS_BUILD_FAILED,
+			})
 			return
 		}
 	}

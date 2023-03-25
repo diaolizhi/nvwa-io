@@ -51,13 +51,15 @@ func (t *AppSvr) CreateAndInitEnvCluster(entity *AppEntity) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+
+	sys := DefaultSystemSvr.Get()
 	p["repo_type"] = REPO_TYPE_GIT
-	p["local_repo_workspace"] = strings.TrimRight(system.RepoRootPath, "/") + "/" + entity.Name
-	p["local_build_workspace"] = strings.TrimRight(system.BuildRootPath, "/") + "/" + entity.Name
-	p["local_pkg_workspace"] = strings.TrimRight(system.PkgRootPath, "/") + "/" + entity.Name
-	p["deploy_user"] = system.DeployUser
-	p["deploy_path"] = strings.TrimRight(system.DeployRootPath, "/") + "/" + entity.Name
-	p["remote_pkg_workspace"] = strings.TrimRight(system.RemotePkgRootPath, "/") + "/" + entity.Name
+	p["local_repo_workspace"] = strings.TrimRight(sys.RepoRootPath, "/") + "/" + entity.Name
+	p["local_build_workspace"] = strings.TrimRight(sys.BuildRootPath, "/") + "/" + entity.Name
+	p["local_pkg_workspace"] = strings.TrimRight(sys.PkgRootPath, "/") + "/" + entity.Name
+	p["deploy_user"] = sys.DeployUser
+	p["deploy_path"] = strings.TrimRight(sys.DeployRootPath, "/") + "/" + entity.Name
+	p["remote_pkg_workspace"] = strings.TrimRight(sys.RemotePkgRootPath, "/") + "/" + entity.Name
 	p["cmd_timeout"] = 600
 	p["enabled"] = ENABLED
 	p["ctime"] = libs.GetNow()
@@ -78,7 +80,6 @@ func (t *AppSvr) CreateAndInitEnvCluster(entity *AppEntity) (int64, error) {
 	}
 
 	// 1.1 if use jenkins, create Jenkins project
-	sys := DefaultSystemSvr.Get()
 	if sys.UseJenkins {
 		app := new(AppEntity)
 		err = tx.Select("*").From(DefaultAppDao.Table()).Where(dbx.HashExp{"id": appId}).One(app)
@@ -349,7 +350,7 @@ func (t *AppSvr) CloneOrFetchRepository(app *AppEntity, checkout string, isBranc
 	// local repository not exist, do git clone
 	if os.IsNotExist(err) {
 		// init local git repository
-		_, err := libs.CmdExecShellDefault(fmt.Sprintf("mkdir -p %s", DefaultSystemSvr.Get().RepoRootPath))
+		_, err := libs.CmdExecShellDefault(fmt.Sprintf("mkdir -p %s", app.LocalRepoWorkspace))
 		if err != nil {
 			logger.Errorf("Failed to mkdir -p %s, err=%s", app.LocalRepoWorkspace, err.Error())
 			return "", err
